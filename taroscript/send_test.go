@@ -1679,7 +1679,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 		f: func(t *testing.T) (*asset.Asset, *asset.Asset, error) {
 			state := initSpendScenario(t)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1TaroTree, state.address1,
+				&state.asset1TaroTree, state.address1,
 				state.spenderScriptKey, address.MainNetTaro,
 			)
 			require.False(t, needsSplit)
@@ -1692,7 +1692,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 		f: func(t *testing.T) (*asset.Asset, *asset.Asset, error) {
 			state := initSpendScenario(t)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1CollectFamilyTaroTree,
+				&state.asset1CollectFamilyTaroTree,
 				state.address1CollectFamily,
 				state.spenderScriptKey, address.TestNet3Taro,
 			)
@@ -1706,7 +1706,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 		f: func(t *testing.T) (*asset.Asset, *asset.Asset, error) {
 			state := initSpendScenario(t)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset2TaroTree, state.address1,
+				&state.asset2TaroTree, state.address1,
 				state.spenderScriptKey, address.MainNetTaro,
 			)
 			require.True(t, needsSplit)
@@ -1719,7 +1719,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 		f: func(t *testing.T) (*asset.Asset, *asset.Asset, error) {
 			state := initSpendScenario(t)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1TaroTree, state.address2,
+				&state.asset1TaroTree, state.address2,
 				state.spenderScriptKey, address.MainNetTaro,
 			)
 			require.False(t, needsSplit)
@@ -1732,7 +1732,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 		f: func(t *testing.T) (*asset.Asset, *asset.Asset, error) {
 			state := initSpendScenario(t)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1TaroTree,
+				&state.asset1TaroTree,
 				state.address1CollectFamily,
 				state.spenderScriptKey, address.TestNet3Taro,
 			)
@@ -1752,7 +1752,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 			)
 			require.NoError(t, err)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1TaroTree, *address1testnet,
+				&state.asset1TaroTree, *address1testnet,
 				state.receiverPubKey, address.TestNet3Taro,
 			)
 			require.False(t, needsSplit)
@@ -1771,7 +1771,7 @@ var addressValidInputTestCases = []addressValidInputTestCase{
 			)
 			require.NoError(t, err)
 			inputAsset, needsSplit, err := taroscript.IsValidInput(
-				state.asset1TaroTree, *address1testnet,
+				&state.asset1TaroTree, *address1testnet,
 				state.receiverPubKey, address.MainNetTaro,
 			)
 			require.False(t, needsSplit)
