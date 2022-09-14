@@ -960,7 +960,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 			require.NoError(t, err)
 
 			_, err = taroscript.CreateSpendCommitments(
-				senderTaroCommitment,
+				&senderTaroCommitment,
 				state.asset1PrevID, *spendCompleted,
 				state.address1, state.spenderScriptKey,
 			)
@@ -1000,7 +1000,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 			require.NoError(t, err)
 
 			_, err = taroscript.CreateSpendCommitments(
-				senderTaroCommitment,
+				&senderTaroCommitment,
 				state.asset1PrevID, *spendCompleted,
 				state.address1, state.spenderScriptKey,
 			)
@@ -1037,7 +1037,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 				receiverLocator,
 			)
 			_, err = taroscript.CreateSpendCommitments(
-				state.asset2TaroTree,
+				&state.asset2TaroTree,
 				state.asset2PrevID, *spendCompleted,
 				state.address1, state.spenderScriptKey,
 			)
@@ -1065,7 +1065,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1CollectFamilyTaroTree,
+				&state.asset1CollectFamilyTaroTree,
 				state.asset1CollectFamilyPrevID,
 				*spendCompleted, state.address1CollectFamily,
 				state.spenderScriptKey,
@@ -1104,7 +1104,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1TaroTree, state.asset1PrevID,
+				&state.asset1TaroTree, state.asset1PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1144,7 +1144,7 @@ var createSpendCommitmentsTestCases = []createSpendCommitmentsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset2TaroTree, state.asset2PrevID,
+				&state.asset2TaroTree, state.asset2PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1206,7 +1206,7 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1TaroTree, state.asset1PrevID,
+				&state.asset1TaroTree, state.asset1PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1217,10 +1217,16 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 				&state.spenderScriptKey, true,
 			)
 			delete(spendCommitments, senderStateKey)
-			_, err = taroscript.CreateSpendOutputs(
+			receiverStateKey := state.address1CollectFamilyStateKey
+			locators := taroscript.CreateDummyLocators(
+				[][32]byte{senderStateKey, receiverStateKey},
+			)
+			spendPsbt, err := taroscript.CreateTemplatePsbt(locators)
+			require.NoError(t, err)
+			err = taroscript.CreateSpendOutputs(
 				state.address1, spendCompleted.Locators,
 				state.spenderPubKey, state.spenderScriptKey,
-				spendCommitments,
+				spendCommitments, spendPsbt,
 			)
 			return err
 		},
@@ -1243,7 +1249,7 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1TaroTree, state.asset1PrevID,
+				&state.asset1TaroTree, state.asset1PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1251,10 +1257,19 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 
 			receiverStateKey := state.address1StateKey
 			delete(spendCommitments, receiverStateKey)
-			_, err = taroscript.CreateSpendOutputs(
+			senderStateKey := asset.AssetCommitmentKey(
+				state.address1.ID,
+				&state.spenderScriptKey, true,
+			)
+			locators := taroscript.CreateDummyLocators(
+				[][32]byte{senderStateKey, receiverStateKey},
+			)
+			spendPsbt, err := taroscript.CreateTemplatePsbt(locators)
+			require.NoError(t, err)
+			err = taroscript.CreateSpendOutputs(
 				state.address1, spendCompleted.Locators,
 				state.spenderPubKey, state.spenderScriptKey,
-				spendCommitments,
+				spendCommitments, spendPsbt,
 			)
 			return err
 		},
@@ -1280,7 +1295,7 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1CollectFamilyTaroTree,
+				&state.asset1CollectFamilyTaroTree,
 				state.asset1CollectFamilyPrevID,
 				*spendCompleted,
 				state.address1CollectFamily,
@@ -1293,20 +1308,18 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 				&state.spenderScriptKey, false,
 			)
 			receiverStateKey := state.address1CollectFamilyStateKey
-			spendCompleted.Locators = make(taroscript.SpendLocators)
-			spendCompleted.Locators[senderStateKey] =
-				commitment.SplitLocator{
-					OutputIndex: uint32(0),
-				}
-			spendCompleted.Locators[receiverStateKey] =
-				commitment.SplitLocator{
-					OutputIndex: uint32(1),
-				}
-			spendPsbt, err := taroscript.CreateSpendOutputs(
+			spendCompleted.Locators = taroscript.CreateDummyLocators(
+				[][32]byte{senderStateKey, receiverStateKey},
+			)
+			spendPsbt, err := taroscript.CreateTemplatePsbt(
+				spendCompleted.Locators,
+			)
+			require.NoError(t, err)
+			err = taroscript.CreateSpendOutputs(
 				state.address1CollectFamily,
 				spendCompleted.Locators,
 				state.spenderPubKey, state.spenderScriptKey,
-				spendCommitments,
+				spendCommitments, spendPsbt,
 			)
 			require.NoError(t, err)
 
@@ -1340,7 +1353,7 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset1TaroTree, state.asset1PrevID,
+				&state.asset1TaroTree, state.asset1PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1351,19 +1364,17 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 				&state.spenderScriptKey, true,
 			)
 			receiverStateKey := state.address1StateKey
-			spendCompleted.Locators = make(taroscript.SpendLocators)
-			spendCompleted.Locators[senderStateKey] =
-				commitment.SplitLocator{
-					OutputIndex: uint32(0),
-				}
-			spendCompleted.Locators[receiverStateKey] =
-				commitment.SplitLocator{
-					OutputIndex: uint32(1),
-				}
-			spendPsbt, err := taroscript.CreateSpendOutputs(
+			spendCompleted.Locators = taroscript.CreateDummyLocators(
+				[][32]byte{senderStateKey, receiverStateKey},
+			)
+			spendPsbt, err := taroscript.CreateTemplatePsbt(
+				spendCompleted.Locators,
+			)
+			require.NoError(t, err)
+			err = taroscript.CreateSpendOutputs(
 				state.address1, spendCompleted.Locators,
 				state.spenderPubKey, state.spenderScriptKey,
-				spendCommitments,
+				spendCommitments, spendPsbt,
 			)
 			require.NoError(t, err)
 
@@ -1400,7 +1411,7 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 			require.NoError(t, err)
 
 			spendCommitments, err := taroscript.CreateSpendCommitments(
-				state.asset2TaroTree, state.asset2PrevID,
+				&state.asset2TaroTree, state.asset2PrevID,
 				*spendCompleted, state.address1,
 				state.spenderScriptKey,
 			)
@@ -1411,10 +1422,14 @@ var createSpendOutputsTestCases = []createSpendOutputsTestCase{
 				Locators[receiverStateKey]
 			receiverAsset := spendCompleted.SplitCommitment.
 				SplitAssets[receiverLocator].Asset
-			spendPsbt, err := taroscript.CreateSpendOutputs(
+			spendPsbt, err := taroscript.CreateTemplatePsbt(
+				spendCompleted.Locators,
+			)
+			require.NoError(t, err)
+			err = taroscript.CreateSpendOutputs(
 				state.address1, spendCompleted.Locators,
 				state.spenderPubKey, state.spenderScriptKey,
-				spendCommitments,
+				spendCommitments, spendPsbt,
 			)
 			require.NoError(t, err)
 
