@@ -16,6 +16,7 @@ var assetsCommands = []cli.Command{
 		Subcommands: []cli.Command{
 			mintAssetCommand,
 			listAssetsCommand,
+			sendAssetsCommand,
 		},
 	},
 }
@@ -121,6 +122,44 @@ func listAssets(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("unable to list assets: %w", err)
 	}
+	printRespJSON(resp)
+	return nil
+}
+
+var sendAssetsCommand = cli.Command{
+	Name:        "send",
+	ShortName:   "s",
+	Usage:       "send an asset",
+	Description: "send asset w/ a taro addr",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  addrName,
+			Usage: "addr to send to",
+		},
+		// TODO(roasbeef): add arg for file name to write sender proof
+		// blob
+	},
+	Action: sendAssets,
+}
+
+func sendAssets(ctx *cli.Context) error {
+	ctxc := getContext()
+	client, cleanUp := getClient(ctx)
+	defer cleanUp()
+
+	switch {
+	case ctx.String(addrName) == "":
+		_ = cli.ShowCommandHelp(ctx, "sent")
+		return nil
+	}
+
+	resp, err := client.SendAsset(ctxc, &tarorpc.SendAssetRequest{
+		TaroAddr: ctx.String(addrName),
+	})
+	if err != nil {
+		return fmt.Errorf("unable to list assets: %w", err)
+	}
+
 	printRespJSON(resp)
 	return nil
 }
