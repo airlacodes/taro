@@ -1004,10 +1004,18 @@ func (a *AssetStore) SelectCommitment(
 		selectedAssets[i] = &tarofreighter.AnchoredCommitment{
 			AnchorPoint:       anchorPoint,
 			AnchorOutputValue: btcutil.Amount(anchorUTXO.AmtSats),
-			InternalKey:       *internalKey,
-			TapscriptSibling:  anchorUTXO.TapscriptSibling,
-			Asset:             matchingAsset.Asset,
-			Commitment:        anchorPointToCommitment[anchorPoint],
+			InternalKey: keychain.KeyDescriptor{
+				PubKey: internalKey,
+				KeyLocator: keychain.KeyLocator{
+					Index: uint32(anchorUTXO.KeyFamily),
+					Family: keychain.KeyFamily(
+						anchorUTXO.KeyIndex,
+					),
+				},
+			},
+			TapscriptSibling: anchorUTXO.TapscriptSibling,
+			Asset:            matchingAsset.Asset,
+			Commitment:       anchorPointToCommitment[anchorPoint],
 		}
 	}
 
