@@ -10,6 +10,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/taro/mssmt"
@@ -787,6 +788,36 @@ func (a *Asset) DeepEqual(o *Asset) bool {
 	return true
 }
 
+// EncodeSendRecords determines the non-nil records to include when encoding an
+// asset as a Taro leaf for sending.
+func (a *Asset) EncodeSendRecords(sendAmt btcutil.Amount,
+	recipientScriptKey *btcec.PublicKey) []tlv.Record {
+
+	var (
+		records       = make([]tlv.Record, 0, 7)
+		amt           = uint64(sendAmt)
+		id            = [32]byte(a.ID())
+		scriptVersion = ScriptV0
+	)
+	records = append(records, NewLeafVersionRecord(&a.Version))
+	records = append(records, NewLeafIDRecord(&id))
+	records = append(records, NewLeafTypeRecord(&a.Type))
+	records = append(records, NewLeafAmountRecord(&amt))
+	records = append(records, NewLeafScriptVersionRecord(
+		&scriptVersion,
+	))
+	records = append(records, NewLeafScriptKeyRecord(&recipientScriptKey))
+
+	if a.FamilyKey != nil {
+		// TODO(guggero): Is this correct? We don't have the family key
+		// signature in the address (which makes sense), so I guess yes?
+		famKey := &a.FamilyKey.FamKey
+		records = append(records, NewLeafFamilyKeyOnlyRecord(&famKey))
+	}
+
+	return records
+}
+
 // EncodeRecords determines the non-nil records to include when encoding an
 // asset at runtime.
 func (a *Asset) EncodeRecords() []tlv.Record {
@@ -839,6 +870,20 @@ func (a *Asset) DecodeRecords() []tlv.Record {
 	}
 }
 
+// EncodeSend encodes an asset into a TLV stream to represent a leaf used to
+// send the given amount to the new script key.
+func (a *Asset) EncodeSend(w io.Writer, sendAmt btcutil.Amount,
+	recipientScriptKey *btcec.PublicKey) error {
+
+	stream, err := tlv.NewStream(
+		a.EncodeSendRecords(sendAmt, recipientScriptKey)...,
+	)
+	if err != nil {
+		return err
+	}
+	return stream.Encode(w)
+}
+
 // Encode encodes an asset into a TLV stream.
 func (a *Asset) Encode(w io.Writer) error {
 	stream, err := tlv.NewStream(a.EncodeRecords()...)
@@ -864,4 +909,16 @@ func (a *Asset) Leaf() (*mssmt.LeafNode, error) {
 		return nil, err
 	}
 	return mssmt.NewLeafNode(buf.Bytes(), a.Amount), nil
+}
+
+// LeafSend returns the asset encoded as a MS-SMT leaf node used to send the
+// given amount to the new script key.
+func (a *Asset) LeafSend(sendAmt btcutil.Amount,
+	recipientScriptKey *btcec.PublicKey) (*mssmt.LeafNode, error) {
+
+	var buf bytes.Buffer
+	if err := a.EncodeSend(&buf, sendAmt, recipientScriptKey); err != nil {
+		return nil, err
+	}
+	return mssmt.NewLeafNode(buf.Bytes(), uint64(sendAmt)), nil
 }

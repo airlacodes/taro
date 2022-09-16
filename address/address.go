@@ -2,13 +2,19 @@ package address
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil/bech32"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/lightninglabs/taro/asset"
+	"github.com/lightninglabs/taro/commitment"
+	"github.com/lightninglabs/taro/mssmt"
 	"github.com/lightningnetwork/lnd/tlv"
 )
 
@@ -160,6 +166,83 @@ func (a *Taro) AssetCommitmentKey() [32]byte {
 	return asset.AssetCommitmentKey(a.ID, &a.ScriptKey, a.FamilyKey == nil)
 }
 
+// TaroCommitment constructs the Taro commitment that is expected to appear on
+// chain when assets are being sent to this address.
+func (a *Taro) TaroCommitment() (*commitment.TaroCommitment, error) {
+	key := a.AssetCommitmentKey()
+	tree := mssmt.NewCompactedTree(mssmt.NewDefaultStore())
+
+	var buf bytes.Buffer
+	if err := a.EncodeSend(&buf); err != nil {
+		return nil, err
+	}
+	leaf := mssmt.NewLeafNode(buf.Bytes(), a.Amount)
+
+	// We use the default, in-memory store that doesn't actually use the
+	// context.
+	updatedTree, err := tree.Insert(context.Background(), key, leaf)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedRoot, err := updatedTree.Root(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return commitment.NewTaroCommitment(&commitment.AssetCommitment{
+		Version:  a.Version,
+		AssetID:  a.ID,
+		TreeRoot: updatedRoot,
+	})
+}
+
+// TaprootOutputKey returns the on-chain Taproot output key.
+func (a *Taro) TaprootOutputKey(sibling *chainhash.Hash) (*btcec.PublicKey,
+	error) {
+
+	c, err := a.TaroCommitment()
+	if err != nil {
+		return nil, fmt.Errorf("unable to derive taro commitment: %w",
+			err)
+	}
+	tapscriptRoot := c.TapscriptRoot(sibling)
+	taprootOutputKey := txscript.ComputeTaprootOutputKey(
+		&a.InternalKey, tapscriptRoot[:],
+	)
+
+	return taprootOutputKey, nil
+}
+
+// EncodeSendRecords determines the non-nil records to include when encoding an
+// address as a Taro leaf for sending.
+func (a *Taro) EncodeSendRecords() []tlv.Record {
+	var (
+		records       = make([]tlv.Record, 0, 7)
+		id            = [32]byte(a.ID)
+		scriptVersion = asset.ScriptV0
+		scriptKey     = &a.ScriptKey
+	)
+	records = append(records, asset.NewLeafVersionRecord(&a.Version))
+	records = append(records, asset.NewLeafIDRecord(&id))
+	records = append(records, asset.NewLeafTypeRecord(&a.Type))
+	records = append(records, asset.NewLeafAmountRecord(&a.Amount))
+	records = append(records, asset.NewLeafScriptVersionRecord(
+		&scriptVersion,
+	))
+	records = append(records, asset.NewLeafScriptKeyRecord(&scriptKey))
+
+	if a.FamilyKey != nil {
+		// TODO(guggero): Is this correct? We don't have the family key
+		// signature in the address (which makes sense), so I guess yes?
+		records = append(records, asset.NewLeafFamilyKeyOnlyRecord(
+			&a.FamilyKey,
+		))
+	}
+
+	return records
+}
+
 // EncodeRecords determines the non-nil records to include when encoding an
 // address at runtime.
 func (a *Taro) EncodeRecords() []tlv.Record {
@@ -194,6 +277,16 @@ func (a *Taro) DecodeRecords() []tlv.Record {
 		newAddressAmountRecord(&a.Amount),
 		newAddressTypeRecord(&a.Type),
 	}
+}
+
+// EncodeSend encodes an address into a TLV stream to represent a leaf used to
+// send to this address.
+func (a *Taro) EncodeSend(w io.Writer) error {
+	stream, err := tlv.NewStream(a.EncodeSendRecords()...)
+	if err != nil {
+		return err
+	}
+	return stream.Encode(w)
 }
 
 // Encode encodes an address into a TLV stream.
