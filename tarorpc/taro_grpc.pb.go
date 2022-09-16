@@ -44,7 +44,7 @@ type TaroClient interface {
 	// tarocli: `addrs decode`
 	//DecodeAddr decode a Taro address into a partial asset message that
 	//represents the asset it wants to receive.
-	DecodeAddr(ctx context.Context, in *Addr, opts ...grpc.CallOption) (*Asset, error)
+	DecodeAddr(ctx context.Context, in *DecodeAddrRequest, opts ...grpc.CallOption) (*Addr, error)
 	// tarocli: `proofs verify`
 	//VerifyProof attempts to verify a given proof file that claims to be anchored
 	//at the specified genesis point.
@@ -122,8 +122,8 @@ func (c *taroClient) NewAddr(ctx context.Context, in *NewAddrRequest, opts ...gr
 	return out, nil
 }
 
-func (c *taroClient) DecodeAddr(ctx context.Context, in *Addr, opts ...grpc.CallOption) (*Asset, error) {
-	out := new(Asset)
+func (c *taroClient) DecodeAddr(ctx context.Context, in *DecodeAddrRequest, opts ...grpc.CallOption) (*Addr, error) {
+	out := new(Addr)
 	err := c.cc.Invoke(ctx, "/tarorpc.Taro/DecodeAddr", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -188,7 +188,7 @@ type TaroServer interface {
 	// tarocli: `addrs decode`
 	//DecodeAddr decode a Taro address into a partial asset message that
 	//represents the asset it wants to receive.
-	DecodeAddr(context.Context, *Addr) (*Asset, error)
+	DecodeAddr(context.Context, *DecodeAddrRequest) (*Addr, error)
 	// tarocli: `proofs verify`
 	//VerifyProof attempts to verify a given proof file that claims to be anchored
 	//at the specified genesis point.
@@ -227,7 +227,7 @@ func (UnimplementedTaroServer) QueryAddrs(context.Context, *QueryAddrRequest) (*
 func (UnimplementedTaroServer) NewAddr(context.Context, *NewAddrRequest) (*Addr, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NewAddr not implemented")
 }
-func (UnimplementedTaroServer) DecodeAddr(context.Context, *Addr) (*Asset, error) {
+func (UnimplementedTaroServer) DecodeAddr(context.Context, *DecodeAddrRequest) (*Addr, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DecodeAddr not implemented")
 }
 func (UnimplementedTaroServer) VerifyProof(context.Context, *ProofFile) (*ProofVerifyResponse, error) {
@@ -361,7 +361,7 @@ func _Taro_NewAddr_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Taro_DecodeAddr_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Addr)
+	in := new(DecodeAddrRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func _Taro_DecodeAddr_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: "/tarorpc.Taro/DecodeAddr",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaroServer).DecodeAddr(ctx, req.(*Addr))
+		return srv.(TaroServer).DecodeAddr(ctx, req.(*DecodeAddrRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
