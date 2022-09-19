@@ -342,6 +342,7 @@ func (r *rpcServer) ListAssets(ctx context.Context,
 				AnchorTxid:      asset.AnchorTxid[:],
 				AnchorBlockHash: asset.AnchorBlockHash[:],
 				AnchorOutpoint:  asset.AnchorOutpoint.String(),
+				InternalKey:     asset.AnchorInternalKey.SerializeCompressed(),
 			},
 		}
 

@@ -1278,7 +1278,8 @@ SELECT
     genesis_info.output_index AS genesis_output_index, genesis_info.asset_type,
     genesis_info.prev_out AS genesis_prev_out,
     txns.raw_tx AS anchor_tx, txns.txid AS anchor_txid, txns.block_hash AS anchor_block_hash,
-    utxos.outpoint AS anchor_outpoint
+    utxos.outpoint AS anchor_outpoint,
+    utxo_internal_keys.raw_key AS anchor_internal_key
 FROM assets
 JOIN genesis_info
     ON assets.asset_id = genesis_info.gen_asset_id
@@ -1291,6 +1292,8 @@ JOIN internal_keys
 JOIN managed_utxos utxos
     ON assets.anchor_utxo_id = utxos.utxo_id AND
         (length(hex($1)) == 0 OR utxos.outpoint = $1)
+JOIN internal_keys utxo_internal_keys
+    ON utxos.internal_key_id = utxo_internal_keys.key_id
 JOIN chain_txns txns
     ON utxos.txn_id = txns.txn_id
 WHERE (
@@ -1332,6 +1335,7 @@ type QueryAssetsRow struct {
 	AnchorTxid         []byte
 	AnchorBlockHash    []byte
 	AnchorOutpoint     []byte
+	AnchorInternalKey  []byte
 }
 
 // TODO(roasbeef): decompose into view to make easier to query/re-use -- same w/ above
@@ -1384,6 +1388,7 @@ func (q *Queries) QueryAssets(ctx context.Context, arg QueryAssetsParams) ([]Que
 			&i.AnchorTxid,
 			&i.AnchorBlockHash,
 			&i.AnchorOutpoint,
+			&i.AnchorInternalKey,
 		); err != nil {
 			return nil, err
 		}
