@@ -517,7 +517,7 @@ func (t *TaroAddressBook) GetOrCreateEvent(ctx context.Context,
 		siblingBytes = tapscriptSibling[:]
 	}
 
-	err = t.db.ExecTx(ctx, &writeTxOpts, func(db AddrBook) error {
+	dbErr := t.db.ExecTx(ctx, &writeTxOpts, func(db AddrBook) error {
 		// The first step is to make sure we already track the on-chain
 		// transaction in our DB.
 		txUpsert := ChainTx{
@@ -580,10 +580,10 @@ func (t *TaroAddressBook) GetOrCreateEvent(ctx context.Context,
 		}
 
 		event, err = fetchEvent(ctx, db, eventID, addr)
-		return nil
+		return err
 	})
-	if err != nil {
-		return nil, err
+	if dbErr != nil {
+		return nil, dbErr
 	}
 
 	return event, nil

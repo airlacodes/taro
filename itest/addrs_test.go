@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"testing"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -22,9 +26,6 @@ import (
 	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 	"github.com/lightningnetwork/lnd/lntest/wait"
 	"github.com/stretchr/testify/require"
-	"strconv"
-	"strings"
-	"testing"
 )
 
 var (
@@ -255,10 +256,10 @@ func sendAssetsToAddr(t *harnessTest, rpcInputAsset *tarorpc.Asset,
 
 	inputAsset, err := asset.New(
 		genesis, uint64(rpcAddr.Amount), uint64(rpcInputAsset.LockTime),
-		uint64(rpcInputAsset.RelativeLockTime), keychain.KeyDescriptor{
-			PubKey: senderScriptKey,
-		}, familyKey,
+		uint64(rpcInputAsset.RelativeLockTime),
+		asset.NewScriptKey(senderScriptKey), familyKey,
 	)
+	require.NoError(t.t, err)
 
 	prevOutpoint, err := parseOutPoint(
 		rpcInputAsset.ChainAnchor.AnchorOutpoint,
@@ -267,10 +268,10 @@ func sendAssetsToAddr(t *harnessTest, rpcInputAsset *tarorpc.Asset,
 
 	newAsset, err := asset.New(
 		genesis, uint64(rpcAddr.Amount), uint64(rpcInputAsset.LockTime),
-		uint64(rpcInputAsset.RelativeLockTime), keychain.KeyDescriptor{
-			PubKey: recipientScriptKey,
-		}, familyKey,
+		uint64(rpcInputAsset.RelativeLockTime),
+		asset.NewScriptKey(recipientScriptKey), familyKey,
 	)
+	require.NoError(t.t, err)
 
 	lndServices, err := t.newLndClient(t.lndHarness.Alice)
 	require.NoError(t.t, err)

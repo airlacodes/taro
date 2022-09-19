@@ -191,14 +191,16 @@ func randAddr(t *testing.T) *address.AddrWithKeyInfo {
 		familyKey = pubKey
 	}
 
-	pubKeyCopy1 := *pubKey
+	scriptKey := asset.NewScriptKeyBIP0086(keychain.KeyDescriptor{
+		PubKey: pubKey,
+	})
 	pubKeyCopy2 := *pubKey
 
 	hash := asset.ID(dummyHash(0x12))
 
 	taro, err := address.New(
-		hash, familyKey, pubKeyCopy1, pubKeyCopy2, amount, assetType,
-		&address.RegressionNetTaro,
+		hash, familyKey, *scriptKey.PubKey, pubKeyCopy2, amount,
+		assetType, &address.RegressionNetTaro,
 	)
 	require.NoError(t, err)
 
@@ -206,11 +208,8 @@ func randAddr(t *testing.T) *address.AddrWithKeyInfo {
 	require.NoError(t, err)
 
 	addr := &address.AddrWithKeyInfo{
-		Taro: taro,
-		ScriptKeyDesc: keychain.KeyDescriptor{
-			KeyLocator: keychain.KeyLocator{},
-			PubKey:     &pubKeyCopy1,
-		},
+		Taro:           taro,
+		ScriptKeyTweak: *scriptKey.TweakedScriptKey,
 		InternalKeyDesc: keychain.KeyDescriptor{
 			KeyLocator: keychain.KeyLocator{},
 			PubKey:     &pubKeyCopy2,
