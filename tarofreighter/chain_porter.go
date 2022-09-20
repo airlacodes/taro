@@ -13,6 +13,7 @@ import (
 	"github.com/lightninglabs/taro/asset"
 	"github.com/lightninglabs/taro/chanutils"
 	"github.com/lightninglabs/taro/commitment"
+	"github.com/lightninglabs/taro/proof"
 	"github.com/lightninglabs/taro/tarogarden"
 	"github.com/lightninglabs/taro/taroscript"
 	"github.com/lightningnetwork/lnd/chainntnfs"
@@ -43,6 +44,9 @@ type ChainPorterConfig struct {
 
 	// ChainParams...
 	ChainParams *address.ChainParams
+
+	// AssetProofs...
+	AssetProofs proof.Archiver
 }
 
 // ChainPorter...
@@ -264,6 +268,54 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta,
 		return
 	}
 
+	// Before we confirm on disk, we'll fetch the set of proofs we need to
+	// update for the assets involved in the transfer. We'll also use this
+	// to make the new proof the receive needs to complete their asset
+	// import.
+	//
+	// TODO(roasbeef): make this a part of the actual state machine
+	// eventually -- also update for multi-send
+	/*inputAssetID := pkg.AssetSpendDeltas[0].WitnessData[0].PrevID
+	inputProofPrefix, err := p.cfg.AssetProofs.FetchProof(ctx, proof.Locator{
+		AssetID:   &inputAssetID.ID,
+		ScriptKey: pkg.AssetSpendDeltas[0].OldScriptKey,
+	})
+	if err != nil {
+		req.errChan <- fmt.Errorf("unable to fetch proof: %w", err)
+		return
+	}
+
+	// TODO(roasbeef): write receiver's proof to disk using the disk
+	// archive
+
+	updateAssetProof, _, err := proof.AppendTransition(
+		inputProofPrefix, proof.TransitionParams{
+			BaseProofParams: proof.BaseProofParams{
+				Block:           block,
+				Tx:              confEvent.Tx,
+				TxIndex:         confEvent.TxIndex,
+				OutputIndex:     ourOutputIndex,
+				InternalKey:     pkg.InternalKey.PubKey,
+				TaroRoot:        newTaroRoot,
+				ExclusionProofs: nil,
+			},
+			NewAsset: nil,
+		},
+	)
+	if err != nil {
+		req.errChan <- fmt.Errorf("unable to append proof: %w", err)
+		return
+	}
+	receiverUpdatedProof, _, err := proof.AppendTransition(
+		inputProofPrefix, proof.TransitionParams{
+			NewAsset: nil,
+		},
+	)
+	if err != nil {
+		req.errChan <- fmt.Errorf("unable to append proof: %w", err)
+		return
+	}*/
+
 	// At this point we have the confirmation signal, so we can mark the
 	// parcel delivery as completed in the database.
 	err = p.cfg.ExportLog.ConfirmParcelDelivery(ctx, &AssetConfirmEvent{
@@ -271,6 +323,7 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta,
 		BlockHash:   *confEvent.BlockHash,
 		BlockHeight: int32(confEvent.BlockHeight),
 		TxIndex:     int32(confEvent.TxIndex),
+		//NewProofBlobs map[asset.SerializedKey]proof.Blob
 	})
 	if err != nil {
 		err := fmt.Errorf("unable to log tx conf: %w", err)
@@ -694,6 +747,9 @@ func (p *ChainPorter) stateStep(currentPkg sendPackage) (*sendPackage, error) {
 		taroRoot := newSenderCommitment.TapscriptRoot(
 			tapscriptSibling,
 		)
+
+		// TODO(roasbeef): get everything needed for proofs and write
+		// to disk
 
 		// Before we broadcast, we'll write to disk that we have a
 		// pending outbound parcel. If we crash before this point,

@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS asset_transfers (
 );
 CREATE INDEX IF NOT EXISTS transfer_lookup on asset_transfers (transfer_time_unix);
 
+-- TODO(roasbeef): extra stuff to write to asset_transfers
+--  CREATE TABLE IF NOT EXISTS transfer_proofs
+--  * primary key of transfer_id
+--  * output index of us+them -- INTEGER
+--  * serialized exclusion proofs []TaprootProof -- BLOB
+--  * also the new asset fully serialized -- BLOB
+--  * inclusion proofs for both sides -- BLOB
+
 CREATE TABLE IF NOT EXISTS asset_deltas (
     id INTEGER PRIMARY KEY,
 

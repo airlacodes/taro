@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/taro/asset"
 	"github.com/lightninglabs/taro/commitment"
+	"github.com/lightninglabs/taro/mssmt"
 	"github.com/lightninglabs/taro/proof"
 	"github.com/lightninglabs/taro/tarogarden"
 	"github.com/lightninglabs/taro/taroscript"
@@ -117,6 +118,8 @@ type OutboundParcelDelta struct {
 	// TODO(roasbeef): move below fields into new struct?
 	NewInternalKey keychain.KeyDescriptor
 
+	// TODO(roasbeef): add the addr
+
 	// TaroRoot is the new Taro root that commits to the set of modified
 	// and unmodified assets.
 	TaroRoot []byte
@@ -132,15 +135,6 @@ type OutboundParcelDelta struct {
 	// AssetSpendDeltas describes the set of mutated assets that now live
 	// at the new anchor tx point.
 	AssetSpendDeltas []AssetSpendDelta
-
-	// TODO(roasbeef): also include pre-populated state transition blobs to
-	// append/extend for entire set of assets?
-	//  * if want to append in db, need incremental hash for proof file
-	//  digest
-
-	// BlobTransitionParams...
-	//
-	BlobTransitionParams proof.TransitionParams
 }
 
 // AssetConfirmEvent is used to mark a batched spend as confirmed on disk.
@@ -157,6 +151,10 @@ type AssetConfirmEvent struct {
 	// TxIndex is the location within the block that confirmed the anchor
 	// point.
 	TxIndex int32
+
+	// NewProofBlobs is a map of the new script keys we have in the
+	// transfer, to an updated proof blob we can write to disk.
+	NewProofBlobs map[asset.SerializedKey]proof.Blob
 }
 
 // ExportLog is used to track the state of outbound taro parcels (batched
