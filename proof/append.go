@@ -58,9 +58,13 @@ func AppendTransition(blob Blob, params *TransitionParams) (Blob, *Proof,
 	}
 
 	lastProof := f.Proofs[len(f.Proofs)-1]
+	lastPrevOut := wire.OutPoint{
+		Hash:  lastProof.AnchorTx.TxHash(),
+		Index: lastProof.InclusionProof.OutputIndex,
+	}
 
 	// We can now create the new proof entry for the asset in the params.
-	newProof, err := createTransitionProof(&lastProof, params)
+	newProof, err := CreateTransitionProof(lastPrevOut, params)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating transition "+
 			"proof: %w", err)
@@ -84,17 +88,30 @@ func AppendTransition(blob Blob, params *TransitionParams) (Blob, *Proof,
 	return buf.Bytes(), newProof, nil
 }
 
-// createTransitionProof creates a proof for an asset transition, based on the
-// last proof of the last asset state and the new asset in the params.
-func createTransitionProof(lastProof *Proof, params *TransitionParams) (*Proof,
-	error) {
-
-	prevOut := wire.OutPoint{
-		Hash:  lastProof.AnchorTx.TxHash(),
-		Index: lastProof.InclusionProof.OutputIndex,
+func UpdateTransitionProof(currentProof *Proof, params *BaseProofParams) error {
+	if params.Block == nil || params.Tx == nil {
+		return fmt.Errorf("Missing block or TX to update proof")
 	}
 
-	proof, err := baseProof(&params.BaseProofParams, prevOut)
+	// Recompute the proof fields that depend on anchor TX confirmation.
+	proofHeader, err := coreProof(params)
+	if err != nil {
+		return err
+	}
+
+	// Update our proof
+	currentProof.BlockHeader = proofHeader.BlockHeader
+	currentProof.AnchorTx = proofHeader.AnchorTx
+	currentProof.TxMerkleProof = proofHeader.TxMerkleProof
+	return nil
+}
+
+// createTransitionProof creates a proof for an asset transition, based on the
+// last proof of the last asset state and the new asset in the params.
+func CreateTransitionProof(lastPrevOut wire.OutPoint, params *TransitionParams) (*Proof,
+	error) {
+
+	proof, err := baseProof(&params.BaseProofParams, lastPrevOut)
 	if err != nil {
 		return nil, fmt.Errorf("error creating base proofs: %w", err)
 	}
