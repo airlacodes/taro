@@ -186,3 +186,10 @@ type ScriptKey struct {
 	TweakedScriptKey []byte
 	Tweak            []byte
 }
+
+type TransferProof struct {
+	ProofID       int32
+	TransferID    int32
+	SenderProof   []byte
+	ReceiverProof []byte
+}

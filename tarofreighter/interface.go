@@ -135,6 +135,8 @@ type OutboundParcelDelta struct {
 	// AssetSpendDeltas describes the set of mutated assets that now live
 	// at the new anchor tx point.
 	AssetSpendDeltas []AssetSpendDelta
+
+	// TODO(jhb): Add proof objects for DB
 }
 
 // AssetConfirmEvent is used to mark a batched spend as confirmed on disk.

@@ -24,6 +24,7 @@ type Querier interface {
 	DeleteAssetWitnesses(ctx context.Context, assetID int32) error
 	DeleteManagedUTXO(ctx context.Context, outpoint []byte) error
 	DeleteNode(ctx context.Context, arg DeleteNodeParams) (int64, error)
+	DeleteSpendProofs(ctx context.Context, transferID int32) error
 	FetchAddrByTaprootOutputKey(ctx context.Context, taprootOutputKey []byte) (FetchAddrByTaprootOutputKeyRow, error)
 	FetchAddrEvent(ctx context.Context, id int32) (FetchAddrEventRow, error)
 	FetchAddrs(ctx context.Context, arg FetchAddrsParams) ([]FetchAddrsRow, error)
@@ -47,6 +48,7 @@ type Querier interface {
 	FetchMintingBatchesByState(ctx context.Context, batchState int16) ([]FetchMintingBatchesByStateRow, error)
 	FetchRootNode(ctx context.Context, namespace string) (MssmtNode, error)
 	FetchSeedlingsForBatch(ctx context.Context, rawKey []byte) ([]AssetSeedling, error)
+	FetchSpendProofs(ctx context.Context, transferID int32) ([]FetchSpendProofsRow, error)
 	GenesisAssets(ctx context.Context) ([]GenesisAsset, error)
 	GenesisPoints(ctx context.Context) ([]GenesisPoint, error)
 	GetRootKey(ctx context.Context, id []byte) (Macaroon, error)
@@ -62,6 +64,7 @@ type Querier interface {
 	InsertLeaf(ctx context.Context, arg InsertLeafParams) error
 	InsertNewAsset(ctx context.Context, arg InsertNewAssetParams) (int32, error)
 	InsertRootKey(ctx context.Context, arg InsertRootKeyParams) error
+	InsertSpendProofs(ctx context.Context, arg InsertSpendProofsParams) error
 	NewMintingBatch(ctx context.Context, arg NewMintingBatchParams) error
 	QueryAssetTransfers(ctx context.Context, arg QueryAssetTransfersParams) ([]QueryAssetTransfersRow, error)
 	// TODO(roasbeef): decompose into view to make easier to query/re-use -- same w/ above

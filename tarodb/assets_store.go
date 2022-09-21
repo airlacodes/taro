@@ -1023,6 +1023,7 @@ func (a *AssetStore) SelectCommitment(
 	return selectedAssets, nil
 }
 
+// TODO(jhb): Update for new table
 // LogPendingParcel marks an outbound parcel as pending on disk. This commits
 // the set of changes to disk (the asset deltas) but doesn't mark the batched
 // spend as being finalized.
@@ -1055,6 +1056,8 @@ func (a *AssetStore) LogPendingParcel(ctx context.Context,
 
 	// TODO(roasbeef): use clock.Clock instead
 	now := time.Now()
+
+	// TODO(jhb): Shuffling for Proof blobs
 
 	var writeTxOpts AssetStoreTxOptions
 	return a.db.ExecTx(ctx, &writeTxOpts, func(q ActiveAssetsStore) error {
@@ -1109,6 +1112,8 @@ func (a *AssetStore) LogPendingParcel(ctx context.Context,
 			return fmt.Errorf("unable to insert asset "+
 				"transfer: %w", err)
 		}
+
+		// TODO(jhb): Shuffling for Proof blobs
 
 		// Now that the transfer itself has been inserted, we can
 		// insert the deltas associated w/ each transfer.
@@ -1272,6 +1277,8 @@ func (a *AssetStore) ConfirmParcelDelivery(ctx context.Context,
 		if err != nil {
 			return err
 		}
+
+		// TODO(jhb): Clear old proof blobs? Write new blob?
 
 		// Finally, we'll delete the old managed UTXO, as it's no
 		// longer an unspent output.

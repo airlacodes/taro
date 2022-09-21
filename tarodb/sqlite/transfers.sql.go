@@ -56,6 +56,16 @@ func (q *Queries) DeleteAssetWitnesses(ctx context.Context, assetID int32) error
 	return err
 }
 
+const deleteSpendProofs = `-- name: DeleteSpendProofs :exec
+DELETE FROM transfer_proofs
+WHERE transfer_id = ?
+`
+
+func (q *Queries) DeleteSpendProofs(ctx context.Context, transferID int32) error {
+	_, err := q.db.ExecContext(ctx, deleteSpendProofs, transferID)
+	return err
+}
+
 const fetchAssetDeltas = `-- name: FetchAssetDeltas :many
 SELECT  
     deltas.old_script_key, deltas.new_amt, 
@@ -111,6 +121,41 @@ func (q *Queries) FetchAssetDeltas(ctx context.Context, transferID int32) ([]Fet
 			&i.SplitCommitmentRootHash,
 			&i.SplitCommitmentRootValue,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const fetchSpendProofs = `-- name: FetchSpendProofs :many
+SELECT
+    sender_proof, receiver_proof
+FROM transfer_proofs
+WHERE transfer_id = ?
+`
+
+type FetchSpendProofsRow struct {
+	SenderProof   []byte
+	ReceiverProof []byte
+}
+
+func (q *Queries) FetchSpendProofs(ctx context.Context, transferID int32) ([]FetchSpendProofsRow, error) {
+	rows, err := q.db.QueryContext(ctx, fetchSpendProofs, transferID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FetchSpendProofsRow
+	for rows.Next() {
+		var i FetchSpendProofsRow
+		if err := rows.Scan(&i.SenderProof, &i.ReceiverProof); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -181,6 +226,25 @@ func (q *Queries) InsertAssetTransfer(ctx context.Context, arg InsertAssetTransf
 	var id int32
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertSpendProofs = `-- name: InsertSpendProofs :exec
+INSERT INTO transfer_proofs (
+   transfer_id, sender_proof, receiver_proof 
+) VALUES (
+    ?, ?, ?
+)
+`
+
+type InsertSpendProofsParams struct {
+	TransferID    int32
+	SenderProof   []byte
+	ReceiverProof []byte
+}
+
+func (q *Queries) InsertSpendProofs(ctx context.Context, arg InsertSpendProofsParams) error {
+	_, err := q.db.ExecContext(ctx, insertSpendProofs, arg.TransferID, arg.SenderProof, arg.ReceiverProof)
+	return err
 }
 
 const queryAssetTransfers = `-- name: QueryAssetTransfers :many
