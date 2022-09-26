@@ -321,7 +321,7 @@ func (f *File) Verify(ctx context.Context) (*AssetSnapshot, error) {
 	}
 
 	var prev *AssetSnapshot
-	for _, proof := range f.Proofs {
+	for _, proof := range f.proofs {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -329,7 +329,7 @@ func (f *File) Verify(ctx context.Context) (*AssetSnapshot, error) {
 		}
 
 		proof := proof
-		result, err := proof.Verify(ctx, prev)
+		result, err := proof.proof.Verify(ctx, prev)
 		if err != nil {
 			return nil, err
 		}

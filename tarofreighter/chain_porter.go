@@ -317,7 +317,7 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta) {
 		p.cfg.ErrChan <- mkErr("error fetching proof: %v", err)
 		return
 	}
-	var senderProof proof.File
+	senderProof := proof.NewEmptyFile(proof.V0)
 	err = senderProof.Decode(bytes.NewReader(senderFullProofBytes))
 	if err != nil {
 		p.cfg.ErrChan <- mkErr("error decoding proof: %v", err)
@@ -346,7 +346,10 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta) {
 	// With the proof suffix updated, we can append the proof, then encode
 	// it to get the final sender proof.
 	var updatedSenderProof bytes.Buffer
-	senderProof.Proofs = append(senderProof.Proofs, senderProofSuffix)
+	if err := senderProof.AppendProof(senderProofSuffix); err != nil {
+		p.cfg.ErrChan <- mkErr("error appending sender proof: %v", err)
+		return
+	}
 	if err := senderProof.Encode(&updatedSenderProof); err != nil {
 		p.cfg.ErrChan <- mkErr("error encoding sender proof: %v", err)
 		return
@@ -377,7 +380,10 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta) {
 	// Now we'll write out the final receiver proof to the on disk proof
 	// archive.
 	var updatedReceiverProof bytes.Buffer
-	senderProof.Proofs[len(senderProof.Proofs)-1] = receiverProofSuffix
+	if err := senderProof.ReplaceLastProof(receiverProofSuffix); err != nil {
+		p.cfg.ErrChan <- mkErr("error replacing receiver proof: %v", err)
+		return
+	}
 	if err := senderProof.Encode(&updatedReceiverProof); err != nil {
 		p.cfg.ErrChan <- mkErr("error encoding receiver proof: %v", err)
 		return
@@ -395,7 +401,7 @@ func (p *ChainPorter) waitForPkgConfirmation(pkg *OutboundParcelDelta) {
 	}
 
 	log.Debugf("Updated proofs for sender and receiver (new_len=%d)",
-		len(senderProof.Proofs))
+		senderProof.NumProofs())
 
 	// At this point we have the confirmation signal, so we can mark the
 	// parcel delivery as completed in the database.

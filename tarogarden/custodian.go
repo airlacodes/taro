@@ -432,22 +432,22 @@ func (c *Custodian) checkProofAvailable(event *address.Event) error {
 		return fmt.Errorf("error fetching proof for event: %w", err)
 	}
 
-	file := &proof.File{}
+	file := proof.NewEmptyFile(proof.V0)
 	if err := file.Decode(bytes.NewReader(blob)); err != nil {
 		return fmt.Errorf("error decoding proof file: %w", err)
 	}
 
 	// Exit early on empty proof (shouldn't happen outside of test cases).
-	if len(file.Proofs) == 0 {
+	if file.IsEmpty() {
 		return fmt.Errorf("archive contained empty proof file: %w", err)
 	}
 
-	lastProof := file.Proofs[len(file.Proofs)-1]
+	lastProof := file.LastProof()
 
 	// The proof might be an old state, let's make sure it matches our event
 	// before marking the inbound asset transfer as complete.
 	if AddrMatchesAsset(event.Addr, &lastProof.Asset) {
-		return c.setReceiveCompleted(event, lastProof)
+		return c.setReceiveCompleted(event, *lastProof)
 	}
 
 	return nil
@@ -457,13 +457,13 @@ func (c *Custodian) checkProofAvailable(event *address.Event) error {
 // and pending address event. If a proof successfully matches the desired state
 // of the address, that completes the inbound transfer of an asset.
 func (c *Custodian) mapProofToEvent(p proof.Blob) error {
-	file := &proof.File{}
+	file := proof.NewEmptyFile(proof.V0)
 	if err := file.Decode(bytes.NewReader(p)); err != nil {
 		return fmt.Errorf("error decoding proof file: %w", err)
 	}
 
 	// Exit early on empty proof (shouldn't happen outside of test cases).
-	if len(file.Proofs) == 0 {
+	if file.IsEmpty() {
 		log.Warnf("Received empty proof file!")
 		return nil
 	}
@@ -471,9 +471,9 @@ func (c *Custodian) mapProofToEvent(p proof.Blob) error {
 	// We got the proof from the multi archiver, which verifies it before
 	// giving it to us. So we don't have to verify them again and can
 	// directly look at the last state.
-	lastProof := file.Proofs[len(file.Proofs)-1]
+	lastProof := file.LastProof()
 	log.Infof("Received new proof file, version=%d, num_proofs=%d",
-		file.Version, len(file.Proofs))
+		file.Version, file.NumProofs())
 
 	// Check if any of our in-flight events match the last proof's state.
 	for _, event := range c.events {
@@ -482,7 +482,7 @@ func (c *Custodian) mapProofToEvent(p proof.Blob) error {
 			// database. Therefore, all we need to do is update the
 			// state of the address event to mark it as completed
 			// successfully.
-			return c.setReceiveCompleted(event, lastProof)
+			return c.setReceiveCompleted(event, *lastProof)
 		}
 	}
 
