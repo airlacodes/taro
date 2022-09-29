@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"reflect"
@@ -50,6 +51,16 @@ var (
 	// ZeroPrevID is the blank prev ID used for genesis assets and also
 	// asset split leaves.
 	ZeroPrevID PrevID
+
+	// N is the NUMs point we'll use for unspendable asset script keys.
+	// It was generated via a try-and-increment approach using the phrase
+	// "taro" with SHA2-256.
+	nBytes, _ = hex.DecodeString(
+		"0293bfe90658c79b480114ff6bbeda51b3ec6412deb367a4d41e1403e3cc" +
+			"6583ed",
+	)
+	N, _       = btcec.ParsePubKey(nBytes)
+	NScriptKey = ToSerialized(N)
 )
 
 const (
