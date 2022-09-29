@@ -596,6 +596,8 @@ func (p *ChainPorter) stateStep(currentPkg sendPackage) (*sendPackage, error) {
 
 		currentPkg.SendState = SendStateValidatedInput
 
+		currentPkg.inputAnchorPkScript()
+
 		return &currentPkg, nil
 
 	// Now that we have our set of inputs selected, we'll validate them to

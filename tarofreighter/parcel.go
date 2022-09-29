@@ -194,20 +194,30 @@ type sendPackage struct {
 	// TargetFeeRate is the target fee rate for this send expressed in
 	// sat/kw.
 	TargetFeeRate chainfee.SatPerKWeight
+
+	pkScript []byte
+	taroRoot []byte
 }
 
 // inputAnchorPkScript returns the top-level Taproot output script of the input
 // anchor output as well as the Taro script root of the output (the Taproot
 // tweak).
 func (s *sendPackage) inputAnchorPkScript() ([]byte, []byte, error) {
-	taroScriptRoot := s.InputAsset.Commitment.TapscriptRoot(nil)
+	if s.pkScript != nil {
+		return s.pkScript, s.taroRoot, nil
+	}
+
+	taroRoot := s.InputAsset.Commitment.TapscriptRoot(nil)
+	s.taroRoot = taroRoot[:]
 
 	anchorPubKey := txscript.ComputeTaprootOutputKey(
-		s.InputAsset.InternalKey.PubKey, taroScriptRoot[:],
+		s.InputAsset.InternalKey.PubKey, s.taroRoot,
 	)
 
-	pkScript, err := taroscript.PayToTaprootScript(anchorPubKey)
-	return pkScript, taroScriptRoot[:], err
+	var err error
+	s.pkScript, err = taroscript.PayToTaprootScript(anchorPubKey)
+
+	return s.pkScript, s.taroRoot, err
 }
 
 // addAnchorPsbtInput adds the input anchor information to the PSBT packet.
