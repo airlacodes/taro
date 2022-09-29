@@ -303,6 +303,48 @@ func splitStateTransition(t *testing.T) (*asset.Asset, commitment.SplitSet,
 		splitCommitment.PrevAssets
 }
 
+func splitFullValueStateTransition(t *testing.T) (*asset.Asset,
+	commitment.SplitSet, commitment.InputSet) {
+
+	privKey := randKey(t)
+	scriptKey := txscript.ComputeTaprootKeyNoScript(privKey.PubKey())
+
+	genesisOutPoint := wire.OutPoint{}
+	genesisAsset := randAsset(t, asset.Normal, *scriptKey)
+	genesisAsset.Amount = 3
+
+	assetID := genesisAsset.Genesis.ID()
+	rootLocator := &commitment.SplitLocator{
+		OutputIndex: 0,
+		AssetID:     assetID,
+		ScriptKey:   asset.NScriptKey,
+		Amount:      0,
+	}
+	externalLocators := []*commitment.SplitLocator{{
+		OutputIndex: 1,
+		AssetID:     assetID,
+		ScriptKey:   asset.ToSerialized(randKey(t).PubKey()),
+		Amount:      3,
+	}}
+	splitCommitment, err := commitment.NewSplitCommitment(
+		genesisAsset, genesisOutPoint, rootLocator, externalLocators...,
+	)
+	require.NoError(t, err)
+
+	virtualTx, _, err := taroscript.VirtualTx(
+		splitCommitment.RootAsset, splitCommitment.PrevAssets,
+	)
+	require.NoError(t, err)
+	newWitness := genTaprootKeySpend(
+		t, *privKey, virtualTx, genesisAsset, 0,
+	)
+	require.NoError(t, err)
+	splitCommitment.RootAsset.PrevWitnesses[0].TxWitness = newWitness
+
+	return splitCommitment.RootAsset, splitCommitment.SplitAssets,
+		splitCommitment.PrevAssets
+}
+
 func TestVM(t *testing.T) {
 	t.Parallel()
 
@@ -344,6 +386,11 @@ func TestVM(t *testing.T) {
 		{
 			name: "split state transition",
 			f:    splitStateTransition,
+			err:  nil,
+		},
+		{
+			name: "split full value state transition",
+			f:    splitFullValueStateTransition,
 			err:  nil,
 		},
 	}
