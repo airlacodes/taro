@@ -60,7 +60,7 @@ func testAddresses(t *harnessTest) {
 		addr, err := secondTarod.NewAddr(ctxt, &tarorpc.NewAddrRequest{
 			GenesisBootstrapInfo: a.AssetGenesis.GenesisBootstrapInfo,
 			FamKey:               familyKey,
-			Amt:                  a.Amount - 1,
+			Amt:                  a.Amount / 2,
 		})
 		require.NoError(t.t, err)
 		addresses = append(addresses, addr)
@@ -178,6 +178,21 @@ func testAddresses(t *harnessTest) {
 		return nil
 	}, defaultWaitTimeout/2)
 	require.NoError(t.t, err)
+
+	// We should also be able to spend the change output we just created,
+	// making an other send to the receiver.
+	assetToSend := rpcAssets[0]
+	amt := assetToSend.Amount / 3
+	addr, err := secondTarod.NewAddr(ctxt, &tarorpc.NewAddrRequest{
+		GenesisBootstrapInfo: assetToSend.AssetGenesis.GenesisBootstrapInfo,
+		Amt:                  amt,
+	})
+	require.NoError(t.t, err)
+
+	sendResp := sendAssetsToAddr(t, addr)
+	sendRespJSON, err := formatProtoJSON(sendResp)
+	require.NoError(t.t, err)
+	t.Logf("Got response from sending assets: %v", sendRespJSON)
 }
 
 // sendAssetsToAddr spends the given input asset and sends the amount specified
